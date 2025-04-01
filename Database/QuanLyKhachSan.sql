@@ -1,0 +1,461 @@
+﻿
+CREATE DATABASE QuanLyKhachSan
+GO
+
+USE QuanLyKhachSan
+GO
+
+
+CREATE TABLE KHACH_HANG ( 
+    CCCD NVARCHAR(12) PRIMARY KEY, 
+    TENKH NVARCHAR(50) NOT NULL,
+    SDT_KH NVARCHAR(12) NOT NULL,
+    GIOITINH_KH BIT NOT NULL,
+    DIACHI NVARCHAR(50) NOT NULL
+);
+
+
+
+CREATE TABLE CHUC_VU (
+    MACV INT IDENTITY(1,1) PRIMARY KEY,
+    TENCV NVARCHAR(50) NOT NULL,
+    DONGIA DECIMAL(18,2) NOT NULL
+);
+
+
+CREATE TABLE NHAN_VIEN (
+    MANV INT IDENTITY(1,1) PRIMARY KEY,
+    TENNV NVARCHAR(50) NOT NULL,
+    NGAYSINH DATE NOT NULL,
+    GIOITINH_NV BIT NOT NULL,
+    SDT_NV NVARCHAR(12) NOT NULL,
+    MACV INT NOT NULL,
+    FOREIGN KEY (MACV) REFERENCES CHUC_VU(MACV)
+);
+
+
+CREATE TABLE CA_LAM (
+    MACA INT IDENTITY(1,1) PRIMARY KEY,
+    TENCA NVARCHAR(50) NOT NULL,
+    GIO_BD TIME NOT NULL,
+    GIO_KT TIME NOT NULL,
+    HESOLUONG FLOAT NOT NULL,
+    GIA_CL DECIMAL(18,2) NOT NULL
+);
+
+
+
+CREATE TABLE LICH_TRUC (
+    MALT INT IDENTITY(1,1) PRIMARY KEY,
+    MANV INT NULL,
+    MACA INT NULL,
+    NGAY_TRUC DATE NOT NULL,
+    FOREIGN KEY (MANV) REFERENCES NHAN_VIEN(MANV) ON DELETE SET NULL,
+    FOREIGN KEY (MACA) REFERENCES CA_LAM(MACA) ON DELETE SET NULL
+);
+
+
+
+CREATE TABLE LOAI_PHONG (
+    MALOAI INT IDENTITY(1,1) PRIMARY KEY,
+    TENLOAI NVARCHAR(50) NOT NULL,
+    GIA_LP DECIMAL(18,2) NOT NULL,
+    SONGUOI_TD INT NOT NULL
+);
+
+
+CREATE TABLE PHONG (
+    MAPHONG INT IDENTITY(1,1) PRIMARY KEY,
+    TENPHONG NVARCHAR(50) NOT NULL,
+    TINHTRANG_P NVARCHAR(50) NOT NULL CHECK (TINHTRANG_P IN (N'Trống', N'Đã đặt', N'Đang sử dụng', N'Cần dọn dẹp')),
+    MALOAI INT NOT NULL,
+    FOREIGN KEY (MALOAI) REFERENCES LOAI_PHONG(MALOAI)
+);
+
+
+
+
+
+CREATE TABLE PHIEU_DAT (
+    MAPD INT IDENTITY(1,1) PRIMARY KEY,
+    SONGUOI INT NOT NULL,
+    TRANGTHAI_PD NVARCHAR(50) NOT NULL CHECK (TRANGTHAI_PD IN (N'Đang chờ', N'Đã xác nhận', N'Đã nhận phòng', N'Đã hủy', N'Hoàn thành')),
+    TIENCOC DECIMAL(18,2) NOT NULL DEFAULT 0,
+    NGAYDAT DATETIME2(3) NOT NULL,
+    NGAY_NHANPHONG DATETIME2(3) NOT NULL,
+    NGAY_TRAPHONG DATETIME2(3) NOT NULL,
+    CCCD NVARCHAR(12) NOT NULL,
+    MANV INT NOT NULL,
+    FOREIGN KEY (CCCD) REFERENCES KHACH_HANG(CCCD),
+    FOREIGN KEY (MANV) REFERENCES NHAN_VIEN(MANV)
+);
+
+
+
+CREATE TABLE CHI_TIET_PD (
+    MAPD INT,
+    MAPHONG INT,
+    PRIMARY KEY (MAPD, MAPHONG),
+    FOREIGN KEY (MAPD) REFERENCES PHIEU_DAT(MAPD),
+    FOREIGN KEY (MAPHONG) REFERENCES PHONG(MAPHONG)
+);
+
+  
+
+
+CREATE TABLE DICH_VU (
+    MADV INT IDENTITY(1,1) PRIMARY KEY,
+    TENDV NVARCHAR(50) NOT NULL,
+    GIA_DV DECIMAL(18,2) NOT NULL,
+    TRANGTHAI_DV BIT NOT NULL DEFAULT 1
+);
+
+
+CREATE TABLE CHI_TIET_DV (
+    MAPD INT,
+    MADV INT,
+    SO_LUONG INT NOT NULL,
+    PRIMARY KEY (MAPD, MADV),
+    FOREIGN KEY (MAPD) REFERENCES PHIEU_DAT(MAPD),
+    FOREIGN KEY (MADV) REFERENCES DICH_VU(MADV)
+);
+
+
+CREATE TABLE HOA_DON (
+    MAHD INT IDENTITY(1,1) PRIMARY KEY,
+    NGAYLAP DATETIME2(3) NOT NULL,
+    TONGTIENPHONG DECIMAL(18,2) NOT NULL DEFAULT 0,
+    TONGTIENDV DECIMAL(18,2) NOT NULL DEFAULT 0,
+	GIAM_GIA INT NULL DEFAULT 0,
+    PT_THANHTOAN NVARCHAR(50) NOT NULL,
+    TRANGTHAI_HD NVARCHAR(50) NOT NULL,
+    TONGTIENTHANHTOAN DECIMAL(18,2) NOT NULL DEFAULT 0,
+    MAPD INT NOT NULL,
+    MANV INT NOT NULL,
+    FOREIGN KEY (MAPD) REFERENCES PHIEU_DAT(MAPD),
+    FOREIGN KEY (MANV) REFERENCES NHAN_VIEN(MANV)
+);
+
+
+CREATE TABLE THIET_BI (
+    MATB INT IDENTITY(1,1) PRIMARY KEY,
+    TENTB NVARCHAR(50) NOT NULL,
+    TINHTRANG_TB NVARCHAR(50) NOT NULL CHECK (TINHTRANG_TB IN (N'Bình thường', N'Hỏng', N'Đang sửa chữa')),
+    MAPHONG INT NULL,
+    VI_TRI_SU_DUNG NVARCHAR(100) NULL,
+    FOREIGN KEY (MAPHONG) REFERENCES PHONG(MAPHONG)
+);
+
+
+
+
+CREATE TABLE TAI_KHOAN (
+    TENTK NVARCHAR(50) PRIMARY KEY,  
+    MATKHAU NVARCHAR(50) NOT NULL,
+    QUYEN BIT NOT NULL DEFAULT 0,
+    MANV INT NOT NULL,
+    FOREIGN KEY (MANV) REFERENCES NHAN_VIEN(MANV)
+);
+
+
+
+
+
+GO
+
+CREATE PROCEDURE USP_GetTaiKhoan
+    @tenTK NVARCHAR(50)
+AS
+BEGIN
+    SET NOCOUNT ON;
+    
+    -- Chỉ lấy thông tin tài khoản mà không kiểm tra mật khẩu
+    SELECT TENTK, MATKHAU, QUYEN, MANV
+    FROM TAI_KHOAN
+    WHERE TENTK = @tenTK;
+END;
+
+GO
+
+
+
+CREATE FUNCTION [dbo].[fuConvertToUnsign1] ( @strInput NVARCHAR(4000) ) RETURNS NVARCHAR(4000)
+AS
+BEGIN
+	IF @strInput IS NULL RETURN @strInput
+	IF @strInput = '' RETURN @strInput
+
+	DECLARE @RT NVARCHAR(4000)
+	DECLARE @SIGN_CHARS NCHAR(136)
+	DECLARE @UNSIGN_CHARS NCHAR (136)
+
+	SET @SIGN_CHARS = N'ăâđêôơưàảãạáằẳẵặắầẩẫậấèẻẽẹéềểễệế ìỉĩịíòỏõọóồổỗộốờởỡợớùủũụúừửữựứỳỷỹỵý ĂÂĐÊÔƠƯÀẢÃẠÁẰẲẴẶẮẦẨẪẬẤÈẺẼẸÉỀỂỄỆẾÌỈĨỊÍ ÒỎÕỌÓỒỔỖỘỐỜỞỠỢỚÙỦŨỤÚỪỬỮỰỨỲỶỸỴÝ' + NCHAR(272)+ NCHAR(208)
+	SET @UNSIGN_CHARS = N'aadeoouaaaaaaaaaaaaaaaeeeeeeeeee iiiiiooooooooooooooouuuuuuuuuuyyyyy AADEOOUAAAAAAAAAAAAAAAEEEEEEEEEEIIIII OOOOOOOOOOOOOOOUUUUUUUUUUYYYYYDD'
+	
+	DECLARE @COUNTER int
+	DECLARE @COUNTER1 int
+	SET @COUNTER = 1
+
+	WHILE (@COUNTER <= LEN(@strInput))
+	BEGIN
+		SET @COUNTER1 = 1
+		WHILE (@COUNTER1 <= LEN(@SIGN_CHARS) + 1)
+			BEGIN
+				IF UNICODE(SUBSTRING(@SIGN_CHARS, @COUNTER1,1)) = UNICODE(SUBSTRING(@strInput,@COUNTER ,1) )
+				BEGIN
+					IF @COUNTER=1
+						SET @strInput = SUBSTRING(@UNSIGN_CHARS, @COUNTER1,1) + SUBSTRING(@strInput, @COUNTER+1,LEN(@strInput)-1)
+					ELSE
+						SET @strInput = SUBSTRING(@strInput, 1, @COUNTER-1) +SUBSTRING(@UNSIGN_CHARS, @COUNTER1,1) + SUBSTRING(@strInput, @COUNTER+1,LEN(@strInput)- @COUNTER)
+					BREAK
+				END
+					SET @COUNTER1 = @COUNTER1 +1
+			END
+			SET @COUNTER = @COUNTER +1
+	END
+	SET @strInput = replace(@strInput,' ','-')
+	RETURN @strInput
+END
+GO
+
+
+
+
+
+
+
+-- Trigger trên PHIEU_DAT để cập nhật trạng thái phòng
+ALTER TRIGGER TRG_UpdatePhongOnPhieuDatChange
+ON PHIEU_DAT
+AFTER UPDATE
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    -- Chỉ cập nhật trạng thái phòng khi trạng thái phiếu đặt thay đổi
+    IF EXISTS (SELECT 1 FROM inserted PD INNER JOIN deleted D ON PD.MAPD = D.MAPD WHERE PD.TRANGTHAI_PD <> D.TRANGTHAI_PD)
+    BEGIN
+        UPDATE P
+        SET P.TINHTRANG_P = 
+            CASE 
+                WHEN PD.TRANGTHAI_PD = N'Đã xác nhận' THEN N'Đã đặt'
+                WHEN PD.TRANGTHAI_PD = N'Đã nhận phòng' THEN N'Đang sử dụng'
+                WHEN PD.TRANGTHAI_PD = N'Hoàn thành' THEN N'Trống'
+                WHEN PD.TRANGTHAI_PD = N'Đã hủy' THEN N'Trống'
+                ELSE P.TINHTRANG_P
+            END
+        FROM PHONG P
+        INNER JOIN CHI_TIET_PD CTPD ON P.MAPHONG = CTPD.MAPHONG
+        INNER JOIN inserted PD ON CTPD.MAPD = PD.MAPD
+        INNER JOIN deleted D ON PD.MAPD = D.MAPD
+        WHERE PD.TRANGTHAI_PD <> D.TRANGTHAI_PD; -- Chỉ cập nhật nếu trạng thái thay đổi
+    END
+END;
+
+    -- Cập nhật tình trạng phòng theo trạng thái phiếu đặt
+    UPDATE P
+    SET TINHTRANG_P = 
+        CASE 
+            WHEN PD.TRANGTHAI_PD = N'Đang chờ' THEN N'Đã đặt'
+            WHEN PD.TRANGTHAI_PD = N'Đã xác nhận' THEN N'Đã đặt'
+            WHEN PD.TRANGTHAI_PD = N'Đã nhận phòng' THEN N'Đang sử dụng'
+            WHEN PD.TRANGTHAI_PD IN (N'Hoàn thành', N'Đã hủy') THEN N'Trống'
+            ELSE P.TINHTRANG_P
+        END
+    FROM PHONG P
+    INNER JOIN CHI_TIET_PD CTPD ON P.MAPHONG = CTPD.MAPHONG
+    INNER JOIN inserted PD ON CTPD.MAPD = PD.MAPD
+    WHERE PD.TRANGTHAI_PD IN (N'Đang chờ', N'Đã xác nhận', N'Đã nhận phòng', N'Hoàn thành', N'Đã hủy');
+
+    -- Xóa CHI_TIET_PD nếu phiếu đặt bị hủy hoặc hoàn thành
+    DELETE CTPD
+    FROM CHI_TIET_PD CTPD
+    INNER JOIN PHIEU_DAT PD ON CTPD.MAPD = PD.MAPD
+    WHERE PD.TRANGTHAI_PD IN (N'Hoàn thành', N'Đã hủy');
+
+    -- Bật lại trigger ngược
+    ENABLE TRIGGER TRG_UpdatePhieuDatOnPhongChange ON PHONG;
+END;
+GO
+
+
+
+-- Trigger trên PHONG để cập nhật trạng thái phiếu đặt
+ALTER TRIGGER TRG_UpdatePhieuDatOnPhongChange
+ON PHONG
+AFTER UPDATE
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    -- Vô hiệu hóa trigger ngược để tránh vòng lặp
+    DISABLE TRIGGER TRG_UpdatePhongOnPhieuDatChange ON PHIEU_DAT;
+
+    -- Cập nhật trạng thái phiếu đặt theo tình trạng phòng
+    UPDATE PD
+    SET TRANGTHAI_PD =
+        CASE 
+            WHEN P.TINHTRANG_P = N'Đã đặt' AND PD.TRANGTHAI_PD = N'Đang chờ' THEN N'Đang chờ'
+            WHEN P.TINHTRANG_P = N'Đang sử dụng' AND PD.TRANGTHAI_PD = N'Đã xác nhận' THEN N'Đã nhận phòng'
+            WHEN P.TINHTRANG_P = N'Trống' AND PD.TRANGTHAI_PD = N'Đã nhận phòng' THEN N'Hoàn thành'
+            ELSE PD.TRANGTHAI_PD
+        END
+    FROM PHIEU_DAT PD
+    INNER JOIN CHI_TIET_PD CTPD ON PD.MAPD = CTPD.MAPD
+    INNER JOIN inserted P ON CTPD.MAPHONG = P.MAPHONG
+    WHERE P.TINHTRANG_P IN (N'Đã đặt', N'Đang sử dụng', N'Trống');
+
+    -- Xóa CHI_TIET_PD nếu phiếu đặt hoàn thành hoặc bị hủy
+    DELETE CTPD
+    FROM CHI_TIET_PD CTPD
+    INNER JOIN PHIEU_DAT PD ON CTPD.MAPD = PD.MAPD
+    INNER JOIN inserted P ON CTPD.MAPHONG = P.MAPHONG
+    WHERE PD.TRANGTHAI_PD IN (N'Hoàn thành', N'Đã hủy');
+
+    -- Bật lại trigger ngược
+    ENABLE TRIGGER TRG_UpdatePhongOnPhieuDatChange ON PHIEU_DAT;
+END;
+GO
+
+
+
+
+
+
+ALTER PROCEDURE sp_TinhLuongNhanVien
+    @MANV INT, 
+    @START_DATE DATE, 
+    @END_DATE DATE
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    -- Lấy số ca làm của nhân viên trong khoảng thời gian
+    WITH ChiTietCa AS (
+        SELECT lt.MANV, nv.TENNV, lt.MACA, cl.TENCA, 
+               COUNT(lt.MACA) AS SOLAN_LAM, 
+               cl.HESOLUONG, cl.GIA_CL
+        FROM LICH_TRUC lt
+        JOIN CA_LAM cl ON lt.MACA = cl.MACA
+        JOIN NHAN_VIEN nv ON lt.MANV = nv.MANV
+        WHERE lt.MANV = @MANV AND lt.NGAY_TRUC BETWEEN @START_DATE AND @END_DATE
+        GROUP BY lt.MANV, nv.TENNV, lt.MACA, cl.TENCA, cl.HESOLUONG, cl.GIA_CL
+    ),
+    TongTienCa AS (
+        SELECT 
+            COALESCE(SUM(CASE WHEN ct.TENCA = N'Ca Sáng' THEN ct.SOLAN_LAM * ct.HESOLUONG * ct.GIA_CL ELSE 0 END), 0) AS TongTienCaSang,
+            COALESCE(SUM(CASE WHEN ct.TENCA = N'Ca Chiều' THEN ct.SOLAN_LAM * ct.HESOLUONG * ct.GIA_CL ELSE 0 END), 0) AS TongTienCaChieu,
+            COALESCE(SUM(CASE WHEN ct.TENCA = N'Ca Đêm' THEN ct.SOLAN_LAM * ct.HESOLUONG * ct.GIA_CL ELSE 0 END), 0) AS TongTienCaDem,
+            COALESCE(SUM(ct.SOLAN_LAM), 0) AS TongSoCaLam
+        FROM ChiTietCa ct
+    )
+    SELECT 
+        ct.MANV, ct.TENNV, ct.MACA, ct.TENCA, ct.SOLAN_LAM, ct.HESOLUONG, ct.GIA_CL,
+        tt.TongTienCaSang, tt.TongTienCaChieu, tt.TongTienCaDem, 
+        tt.TongSoCaLam, 
+        cv.DONGIA AS DonGiaChucVu,
+        (tt.TongTienCaSang + tt.TongTienCaChieu + tt.TongTienCaDem) + (cv.DONGIA * tt.TongSoCaLam) AS LuongNhanVien
+    FROM ChiTietCa ct
+    CROSS JOIN TongTienCa tt
+    JOIN NHAN_VIEN nv ON ct.MANV = nv.MANV
+    JOIN CHUC_VU cv ON nv.MACV = cv.MACV
+    WHERE ct.MANV = @MANV;
+END;
+GO
+
+
+
+
+
+INSERT INTO CHUC_VU (TENCV, DONGIA) VALUES (N'Quản lý', 5000000), (N'Nhân viên', 3000000);
+
+
+
+INSERT INTO NHAN_VIEN (TENNV, NGAYSINH, GIOITINH_NV, SDT_NV, MACV) VALUES (N'Nguyễn Văn A', '1990-01-01', 1, '0987654321', 1);
+INSERT INTO NHAN_VIEN (TENNV, NGAYSINH, GIOITINH_NV, SDT_NV, MACV) VALUES (N'Nguyễn Văn B', '1990-01-01', 1, '0987654327', 2);
+INSERT INTO NHAN_VIEN (TENNV, NGAYSINH, GIOITINH_NV, SDT_NV, MACV) VALUES (N'Nguyễn Văn c', '1990-11-21', 0, '0452344327', 2);
+
+
+INSERT INTO TAI_KHOAN (TENTK, MATKHAU, QUYEN, MANV) VALUES (N'admin', N'123456', 1, 2);
+INSERT INTO TAI_KHOAN (TENTK, MATKHAU, QUYEN, MANV) VALUES (N'Nhân viên', N'123456', 0, 1);
+
+
+
+
+INSERT INTO LOAI_PHONG (TENLOAI, GIA_LP, SONGUOI_TD) VALUES (N'Phòng đơn', 500000.00, 2);
+INSERT INTO LOAI_PHONG (TENLOAI, GIA_LP, SONGUOI_TD) VALUES (N'Phòng đôi', 800000.00, 4);
+INSERT INTO LOAI_PHONG (TENLOAI, GIA_LP, SONGUOI_TD) VALUES (N'Phòng gia đình', 1200000.00, 6);
+INSERT INTO LOAI_PHONG (TENLOAI, GIA_LP, SONGUOI_TD) VALUES (N'Phòng VIP', 2000000.00, 2);
+
+
+
+INSERT INTO PHONG (TENPHONG, TINHTRANG_P, MALOAI) VALUES (N'Phòng 1', N'Trống', 1);
+INSERT INTO PHONG (TENPHONG, TINHTRANG_P, MALOAI) VALUES (N'Phòng 2', N'Trống', 1);
+INSERT INTO PHONG (TENPHONG, TINHTRANG_P, MALOAI) VALUES (N'Phòng 3', N'Trống', 1);
+INSERT INTO PHONG (TENPHONG, TINHTRANG_P, MALOAI) VALUES (N'Phòng 4', N'Trống', 2);
+INSERT INTO PHONG (TENPHONG, TINHTRANG_P, MALOAI) VALUES (N'Phòng 5', N'Trống', 2);
+INSERT INTO PHONG (TENPHONG, TINHTRANG_P, MALOAI) VALUES (N'Phòng 6', N'Trống', 2);
+INSERT INTO PHONG (TENPHONG, TINHTRANG_P, MALOAI) VALUES (N'Phòng 7', N'Trống', 3);
+INSERT INTO PHONG (TENPHONG, TINHTRANG_P, MALOAI) VALUES (N'Phòng 8', N'Trống', 3);
+INSERT INTO PHONG (TENPHONG, TINHTRANG_P, MALOAI) VALUES (N'Phòng 9', N'Trống', 3);
+INSERT INTO PHONG (TENPHONG, TINHTRANG_P, MALOAI) VALUES (N'Phòng 10', N'Trống', 4);
+INSERT INTO PHONG (TENPHONG, TINHTRANG_P, MALOAI) VALUES (N'Phòng 11', N'Trống', 4);
+INSERT INTO PHONG (TENPHONG, TINHTRANG_P, MALOAI) VALUES (N'Phòng 12', N'Trống', 4);
+INSERT INTO PHONG (TENPHONG, TINHTRANG_P, MALOAI) VALUES (N'Phòng 101', N'Trống', 3);
+INSERT INTO PHONG (TENPHONG, TINHTRANG_P, MALOAI) VALUES (N'Phòng 101', N'Trống', 4);
+INSERT INTO PHONG (TENPHONG, TINHTRANG_P, MALOAI) VALUES (N'Phòng 101', N'Đã đặt', 3);
+INSERT INTO PHONG (TENPHONG, TINHTRANG_P, MALOAI) VALUES (N'Phòng 101', N'Đang sử dụng', 4);
+
+
+
+INSERT INTO DICH_VU (TENDV, GIA_DV, TRANGTHAI_DV) VALUES (N'Dịch vụ giặt ủi', 50.00, 1);
+INSERT INTO DICH_VU (TENDV, GIA_DV, TRANGTHAI_DV) VALUES (N'Dịch vụ ăn sáng', 100.00, 1);
+INSERT INTO DICH_VU (TENDV, GIA_DV, TRANGTHAI_DV) VALUES (N'Dịch vụ phòng tập', 30.00, 1);
+INSERT INTO DICH_VU (TENDV, GIA_DV, TRANGTHAI_DV) VALUES (N'Dịch vụ spa', 200.00, 1);
+INSERT INTO DICH_VU (TENDV, GIA_DV, TRANGTHAI_DV) VALUES (N'Dịch vụ đưa đón sân bay', 300.00, 1);
+INSERT INTO DICH_VU (TENDV, GIA_DV, TRANGTHAI_DV) VALUES (N'Dịch vụ tổ chức sự kiện', 500.00, 1);
+INSERT INTO DICH_VU (TENDV, GIA_DV, TRANGTHAI_DV) VALUES (N'Dịch vụ bể bơi', 100.00, 0);
+INSERT INTO DICH_VU (TENDV, GIA_DV, TRANGTHAI_DV) VALUES (N'Dịch vụ karaoke', 50.00, 0);
+
+
+
+
+INSERT INTO THIET_BI (TENTB, TINHTRANG_TB, MAPHONG, VI_TRI_SU_DUNG) 
+VALUES 
+(N'Điều hòa', N'Bình thường', 1, N'Góc trái phòng'),
+(N'Tivi', N'Bình thường', 2, N'Trên tường đối diện giường'),
+(N'Quạt trần', N'Hỏng', NULL, N'Kho dự trữ'),
+(N'Tủ lạnh', N'Đang sửa chữa', 3, N'Cạnh bàn uống nước'),
+(N'Bàn làm việc', N'Bình thường', 4, N'Gần cửa sổ'),
+(N'Đèn ngủ', N'Bình thường', 5, N'Đầu giường'),
+(N'Máy sấy tóc', N'Hỏng', 6, N'Phòng tắm'),
+(N'Bếp từ', N'Đang sửa chữa', NULL, N'Nhà bếp chung');
+
+
+
+
+INSERT INTO CA_LAM (TENCA, GIO_BD, GIO_KT, HESOLUONG, GIA_CL)  
+VALUES  
+(N'Ca sáng', '06:00', '14:00', 1.2, 50000),  
+(N'Ca chiều', '14:00', '22:00', 1.3, 60000),  
+(N'Ca đêm', '22:00', '06:00', 1.5, 70000);  
+
+
+
+
+INSERT INTO LICH_TRUC (MANV, MACA, NGAY_TRUC)
+VALUES 
+    (1, 1, '2025-02-25'),
+    (2, 2, '2025-02-26'),
+    (NULL, 3, '2025-02-27'),
+    (1, NULL, '2025-02-28');
+
+
+INSERT INTO KHACH_HANG (CCCD, TENKH, SDT_KH, GIOITINH_KH, DIACHI)
+VALUES 
+('123456789012', N'Nguyễn Văn A', '0987654321', 1, N'Hà Nội'),
+('987654321098', N'Trần Thị B', '0912345678', 0, N'TP. Hồ Chí Minh'),
+('456123789012', N'Phạm Văn C', '0909123456', 1, N'Đà Nẵng');
+
+
+SELECT SYSDATETIMEOFFSET(), GETDATE(), GETUTCDATE();
